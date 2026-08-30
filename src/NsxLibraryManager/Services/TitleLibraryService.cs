@@ -666,6 +666,31 @@ public class TitleLibraryService(
         var dateCreated = DateTime.Now;
         if (refresh)
         {
+            var baseTitles = await _nsxLibraryDbContext.Titles
+                .Where(t => t.ContentType == TitleContentType.Base)
+                .ToListAsync();
+
+            var appIds = baseTitles.Select(t => t.ApplicationId).ToList();
+
+            var titledbList = await _titledbDbContext.Titles
+                .AsNoTracking()
+                .Where(td => appIds.Contains(td.ApplicationId))
+                .Select(td => new { td.ApplicationId, td.LatestVersion, td.DlcCount })
+                .ToListAsync();
+
+            var titledbVersions = titledbList
+                .GroupBy(td => td.ApplicationId)
+                .ToDictionary(g => g.Key, g => g.OrderByDescending(x => x.LatestVersion).First());
+
+            foreach (var b in baseTitles)
+            {
+                if (titledbVersions.TryGetValue(b.ApplicationId, out var td))
+                {
+                    b.LatestVersion = td.LatestVersion;
+                    if (td.DlcCount.HasValue) b.DlcCount = td.DlcCount.Value;
+                }
+            }
+
             var previousDate = await GetLastLibraryUpdateAsync();
             dateCreated = previousDate?.DateCreated ?? DateTime.Now;
         }
