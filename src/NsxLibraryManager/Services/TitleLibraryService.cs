@@ -843,11 +843,13 @@ public class TitleLibraryService(
                 if (parentTitle is not null)
                 {
                     parentTitle.OwnedUpdates = updateCount;
-                    var maxUpdate = _nsxLibraryDbContext.Titles
+                    var updates = _nsxLibraryDbContext.Titles
                         .Where(x => x.ContentType == TitleContentType.Update &&
                                     x.OtherApplicationId == libraryTitle.OtherApplicationId)
-                        .Max(x => (int?)x.Version) ?? 0;
-                    parentTitle.LatestOwnedUpdateVersion = maxUpdate;
+                        .ToList();
+                    parentTitle.LatestOwnedUpdateVersion = updates.Count > 0 
+                        ? updates.Max(x => x.Version) 
+                        : 0;
                 }
                 break;
             }
