@@ -1,4 +1,4 @@
-﻿using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Mvc;
 using Radzen;
 using System.Text.RegularExpressions;
 using NsxLibraryManager.Contracts;
@@ -18,18 +18,33 @@ public class LibraryController : ControllerBase
     private readonly LibraryBackgroundStateService _stateService;
     private const string ApplicationIdPattern = "^[0-9A-F]{16}$";
     private static readonly RegexOptions RegexFlags = RegexOptions.IgnoreCase | RegexOptions.Compiled;
-    private readonly ILogger<LibraryController> _logger;
+    private readonly NsxLibraryManager.Data.TitledbDbContext _titledbDbContext;
     
     public LibraryController(
         ITitleLibraryService libraryService,
         LibraryBackgroundStateService stateService,
         IServiceProvider serviceProvider,
+        NsxLibraryManager.Data.TitledbDbContext titledbDbContext,
         ILogger<LibraryController> logger)
     {
         _stateService = stateService;
         _logger = logger;
         _backgroundService = serviceProvider.GetServices<IHostedService>().OfType<LibraryBackgroundService>().First();
         _libraryService = libraryService;
+        _titledbDbContext = titledbDbContext;
+    }
+
+    [HttpPost("titledb/version")]
+    [SwaggerOperation(Summary = "Set TitleDB Version", Description = "Update LatestVersion of a title in TitleDB")]
+    public async Task<ActionResult> SetTitledbVersion([FromQuery] string applicationId, [FromQuery] int latestVersion)
+    {
+        var title = await Microsoft.EntityFrameworkCore.EntityFrameworkQueryableExtensions.FirstOrDefaultAsync(_titledbDbContext.Titles, x => x.ApplicationId == applicationId);
+        if (title == null) return NotFound($"ApplicationId {applicationId} not found in TitleDB");
+        
+        var oldVer = title.LatestVersion;
+        title.LatestVersion = latestVersion;
+        await _titledbDbContext.SaveChangesAsync();
+        return Ok(new { applicationId, oldVersion = oldVer, newVersion = latestVersion });
     }
     
     [HttpPost("search")]
