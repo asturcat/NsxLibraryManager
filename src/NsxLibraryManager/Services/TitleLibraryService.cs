@@ -1028,9 +1028,20 @@ public class TitleLibraryService(
                 return Result.Failure<bool>($"Title {title.ApplicationId} with filename {title.FileName} not found");
             case { ContentType: TitleContentType.Update, OtherApplicationId: not null }:
             {
-                var updateCount =
+                var parentTitle =
                     _nsxLibraryDbContext.Titles.FirstOrDefault(x => x.ApplicationId == libraryTitle.OtherApplicationId);
-                if (updateCount is not null) updateCount.OwnedUpdates -= 1;
+                if (parentTitle is not null)
+                {
+                    parentTitle.OwnedUpdates = Math.Max(0, parentTitle.OwnedUpdates - 1);
+                    var remainingUpdates = _nsxLibraryDbContext.Titles
+                        .Where(x => x.ContentType == TitleContentType.Update &&
+                                    x.OtherApplicationId == libraryTitle.OtherApplicationId &&
+                                    x.Id != libraryTitle.Id)
+                        .ToList();
+                    parentTitle.LatestOwnedUpdateVersion = remainingUpdates.Count > 0
+                        ? remainingUpdates.Max(x => x.Version)
+                        : 0;
+                }
                 break;
             }
 
