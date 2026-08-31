@@ -18,6 +18,7 @@ public class LibraryController : ControllerBase
     private readonly LibraryBackgroundStateService _stateService;
     private const string ApplicationIdPattern = "^[0-9A-F]{16}$";
     private static readonly RegexOptions RegexFlags = RegexOptions.IgnoreCase | RegexOptions.Compiled;
+    private readonly ILogger<LibraryController> _logger;
     private readonly NsxLibraryManager.Data.TitledbDbContext _titledbDbContext;
     
     public LibraryController(
@@ -36,7 +37,7 @@ public class LibraryController : ControllerBase
 
     [HttpPost("titledb/version")]
     [SwaggerOperation(Summary = "Set TitleDB Version", Description = "Update LatestVersion of a title in TitleDB")]
-    public async Task<ActionResult> SetTitledbVersion([FromQuery] string applicationId, [FromQuery] int latestVersion)
+    public async Task<ActionResult> SetTitledbVersion([FromQuery] string applicationId, [FromQuery] uint latestVersion)
     {
         var title = await Microsoft.EntityFrameworkCore.EntityFrameworkQueryableExtensions.FirstOrDefaultAsync(_titledbDbContext.Titles, x => x.ApplicationId == applicationId);
         if (title == null) return NotFound($"ApplicationId {applicationId} not found in TitleDB");
