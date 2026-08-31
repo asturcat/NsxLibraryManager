@@ -1,4 +1,4 @@
-﻿using System.Collections.ObjectModel;
+using System.Collections.ObjectModel;
 using System.Linq.Dynamic.Core;
 using Common.Services;
 using Microsoft.EntityFrameworkCore;
@@ -682,12 +682,30 @@ public class TitleLibraryService(
                 .GroupBy(td => td.ApplicationId)
                 .ToDictionary(g => g.Key, g => g.OrderByDescending(x => x.LatestVersion).First());
 
+            // Recalcular siempre el LatestOwnedUpdateVersion real a partir de los updates existentes en la BD
+            var currentUpdates = await _nsxLibraryDbContext.Titles
+                .Where(t => t.ContentType == TitleContentType.Update && t.OtherApplicationId != null)
+                .ToListAsync();
+
+            var updatesByGame = currentUpdates
+                .GroupBy(u => u.OtherApplicationId!)
+                .ToDictionary(g => g.Key, g => g.Max(u => u.Version));
+
             foreach (var b in baseTitles)
             {
                 if (titledbVersions.TryGetValue(b.ApplicationId, out var td))
                 {
                     b.LatestVersion = td.LatestVersion;
                     if (td.DlcCount.HasValue) b.DlcCount = td.DlcCount.Value;
+                }
+
+                if (updatesByGame.TryGetValue(b.ApplicationId, out var maxVer))
+                {
+                    b.LatestOwnedUpdateVersion = maxVer;
+                }
+                else
+                {
+                    b.LatestOwnedUpdateVersion = 0;
                 }
             }
 
