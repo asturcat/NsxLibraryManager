@@ -1032,7 +1032,7 @@ public class TitleLibraryService(
                     _nsxLibraryDbContext.Titles.FirstOrDefault(x => x.ApplicationId == libraryTitle.OtherApplicationId);
                 if (parentTitle is not null)
                 {
-                    parentTitle.OwnedUpdates = Math.Max(0, parentTitle.OwnedUpdates - 1);
+                    if (parentTitle.OwnedUpdates > 0) parentTitle.OwnedUpdates--;
                     var remainingUpdates = _nsxLibraryDbContext.Titles
                         .Where(x => x.ContentType == TitleContentType.Update &&
                                     x.OtherApplicationId == libraryTitle.OtherApplicationId &&
