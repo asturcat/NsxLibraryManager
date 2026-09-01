@@ -682,7 +682,7 @@ public class TitleLibraryService(
                 .GroupBy(td => td.ApplicationId)
                 .ToDictionary(g => g.Key, g => g.OrderByDescending(x => x.LatestVersion).First());
 
-            // Recalcular siempre el LatestOwnedUpdateVersion real a partir de los updates existentes en la BD
+            // Recalcular siempre el LatestOwnedUpdateVersion y OwnedUpdates a partir de los updates existentes en la BD
             var currentUpdates = await _nsxLibraryDbContext.Titles
                 .Where(t => t.ContentType == TitleContentType.Update && t.OtherApplicationId != null)
                 .ToListAsync();
@@ -690,6 +690,19 @@ public class TitleLibraryService(
             var updatesByGame = currentUpdates
                 .GroupBy(u => u.OtherApplicationId!)
                 .ToDictionary(g => g.Key, g => g.Max(u => u.Version));
+
+            var updateCountsByGame = currentUpdates
+                .GroupBy(u => u.OtherApplicationId!)
+                .ToDictionary(g => g.Key, g => g.Count());
+
+            // Recalcular siempre los OwnedDlcs reales a partir de los DLCs existentes en la BD
+            var currentDlcs = await _nsxLibraryDbContext.Titles
+                .Where(t => t.ContentType == TitleContentType.DLC && t.OtherApplicationId != null)
+                .ToListAsync();
+
+            var dlcsByGame = currentDlcs
+                .GroupBy(d => d.OtherApplicationId!)
+                .ToDictionary(g => g.Key, g => g.Count());
 
             foreach (var b in baseTitles)
             {
@@ -707,6 +720,9 @@ public class TitleLibraryService(
                 {
                     b.LatestOwnedUpdateVersion = 0;
                 }
+
+                b.OwnedUpdates = updateCountsByGame.TryGetValue(b.ApplicationId, out var upCount) ? upCount : 0;
+                b.OwnedDlcs = dlcsByGame.TryGetValue(b.ApplicationId, out var dlcCount) ? dlcCount : 0;
             }
 
             var previousDate = await GetLastLibraryUpdateAsync();
